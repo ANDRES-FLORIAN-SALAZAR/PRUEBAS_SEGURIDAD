@@ -1,56 +1,99 @@
-# Refactorización del Sistema de Gestión de Productos
+# Informe de Refactorización del Sistema de Gestión de Productos
 
-## Introducción
+## 1. Identificación de Violaciones SOLID
 
-Este informe documenta el proceso de refactorización de un sistema de gestión de productos en Python, aplicando los principios SOLID para mejorar la calidad del código y su mantenibilidad. También se incluye un análisis de las violaciones detectadas y las correcciones implementadas.
+### Violación del Principio de Responsabilidad Única (SRP)
+- **Problema:** La clase `GestorProductos` manejaba tanto la lógica de productos como la persistencia en base de datos.
+- **Evidencia:**
+  ```python
+  class GestorProductos:
+      def agregar_producto(self, producto):
+          # Lógica de validación
+          self.guardar_en_bd(producto)
 
-## Violaciones SOLID Identificadas
+      def guardar_en_bd(self, producto):
+          # Conexión y guardado en base de datos
+  ```
+- **Solución:** Separar la lógica de negocio de la persistencia.
 
-### 1. **Principio de Responsabilidad Única (SRP)**
+### Violación del Principio Abierto/Cerrado (OCP)
+- **Problema:** El método `calcular_descuento` dependía de una serie de condicionales para diferentes tipos de descuentos.
+- **Evidencia:**
+  ```python
+  class CalculadoraDescuentos:
+      def calcular_descuento(self, producto):
+          if producto.categoria == "electronica":
+              return producto.precio * 0.1
+          elif producto.categoria == "ropa":
+              return producto.precio * 0.2
+  ```
+- **Solución:** Usar polimorfismo con una jerarquía de clases para descuentos.
 
-- Antes: La clase `GestorProductos` manejaba tanto la persistencia de datos como la lógica de negocio.
-- Corrección: Se introdujo la clase `GestorArchivo` para encargarse de la persistencia de datos.
+## 2. Análisis de los Principios Afectados
 
-### 2. **Principio de Abierto/Cerrado (OCP)**
+| Principio | Violación | Solución |
+|-----------|----------|----------|
+| SRP | Mezcla de lógica de negocio y persistencia en `GestorProductos` | Crear una clase `RepositorioProductos` |
+| OCP | Cálculo de descuentos basado en condicionales | Aplicar el patrón Estrategia |
 
-- Antes: La creación de productos no permitía fácilmente la extensión a nuevos tipos de productos sin modificar la clase `Producto`.
-- Corrección: Se creó la subclase `ProductoEspecial` para manejar descuentos sin modificar la clase base.
+## 3. Propuestas de Solución
 
-### 3. **Principio de Sustitución de Liskov (LSP)**
+### Código refactorizado aplicando SOLID
 
-- Antes: `ProductoEspecial` sobrescribía el cálculo de precio, pero no respetaba completamente la estructura de `Producto`.
-- Corrección: Se mantuvo la compatibilidad asegurando que `ProductoEspecial` solo extendiera funcionalidades sin alterar el comportamiento esperado.
+```python
+class RepositorioProductos:
+    def guardar(self, producto):
+        # Lógica de guardado en base de datos
 
-### 4. **Principio de Segregación de Interfaces (ISP)**
+class EstrategiaDescuento(ABC):
+    @abstractmethod
+    def aplicar_descuento(self, producto):
+        pass
 
-- Antes: No existían interfaces claras para la gestión de productos.
-- Corrección: Se introdujo `RepositorioProductos` como una interfaz abstracta para estandarizar las operaciones sobre productos.
+class DescuentoElectronica(EstrategiaDescuento):
+    def aplicar_descuento(self, producto):
+        return producto.precio * 0.1
 
-### 5. **Principio de Inversión de Dependencias (DIP)**
+class DescuentoRopa(EstrategiaDescuento):
+    def aplicar_descuento(self, producto):
+        return producto.precio * 0.2
+```
 
-- Antes: `GestorVentas` dependía directamente de `GestorProductos`.
-- Corrección: Se introdujo la inyección de dependencias, permitiendo mayor flexibilidad y testabilidad.
+## 4. Diagrama de Clases
 
-## Correcciones Adicionales Identificadas con Ruff
+```plaintext
+              +--------------------------+
+              |    Producto              |
+              |--------------------------|
+              | - nombre: str            |
+              | - precio: float          |
+              | - categoria: str         |
+              +--------------------------+
+                         |
+                         v
+              +--------------------------+
+              | RepositorioProductos     |
+              |--------------------------|
+              | + guardar(producto)      |
+              +--------------------------+
+                         |
+                         v
+              +--------------------------+
+              | EstrategiaDescuento      |
+              |--------------------------|
+              | + aplicar_descuento()    |
+              +--------------------------+
+                         |
+            ---------------------------------
+            |                               |
+  +--------------------------+   +--------------------------+
+  | DescuentoElectronica      |   | DescuentoRopa           |
+  |--------------------------|   |--------------------------|
+  | + aplicar_descuento()     |   | + aplicar_descuento()     |
+  +--------------------------+   +--------------------------+
+```
 
-### 1. **I001: Orden de Imports**
-
-- Antes: Los imports no estaban organizados correctamente.
-- Corrección: Se reordenaron en el siguiente orden:
-  1. Módulos estándar de Python
-  2. Módulos de terceros (si los hubiera)
-  3. Módulos propios
-
-### 2. **PLR0913: Demasiados argumentos en una función**
-
-- Antes: `ProductoEspecial` tenía más de 5 argumentos en su `__init__`.
-- Corrección: Se utilizó `dataclass` para evitar la necesidad de definir manualmente el constructor.
-
-## Conclusión
-
-La refactorización aplicada mejoró la separación de responsabilidades y la extensibilidad del sistema. Se logró mayor adherencia a los principios SOLID, facilitando la evolución y mantenimiento del código. Además, se resolvieron las advertencias detectadas por Ruff, mejorando la calidad del código en términos de estilo y legibilidad.
-
-## Evidencia de las Correcciones
+## 5. Resultados del Análisis con Ruff
 
 A continuación se incluyen capturas de pantalla con los resultados de Ruff antes y después de aplicar las correcciones:
 
