@@ -32,8 +32,9 @@ class Producto:
 class ProductoEspecial(Producto):
     """Clase para productos con descuento."""
 
-    def __init__(
-        self,producto_id: int,
+    def __init__ (
+        self,
+        producto_id: int,
         nombre: str,
         precio: float,
         categoria: str,
